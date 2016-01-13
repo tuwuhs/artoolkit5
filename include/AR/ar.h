@@ -67,6 +67,7 @@
 #ifndef _WIN32 // errno is defined in stdlib.h on Windows.
 #  include <sys/errno.h>
 #endif
+#include <stdbool.h>
 #include <AR/config.h>
 #include <AR/arConfig.h>
 #ifdef __ANDROID__
@@ -1890,6 +1891,12 @@ void arUtilPrintTransMat(const ARdouble trans[3][4]);
 void arUtilPrintMtx16(const ARdouble mtx16[16]);
 
 #ifdef ANDROID
+    /*!
+         @function
+         @abstract   Returns a pointer to the current JavaVM instance from native code.
+    */
+    JavaVM* getPtrToJavaVM();
+
     //Call from native code to do the following in Java source:
     //    import android.provider.Settings.Secure;
     //    private String android_id = Secure.getString(getContext().getContentResolver(),
@@ -1898,7 +1905,8 @@ void arUtilPrintMtx16(const ARdouble mtx16[16]);
 #endif //#ifdef ANDROID
 
 #ifdef __cplusplus
-}
-#endif //#ifdef __cplusplus
+    }
+#endif //__cplusplus
 
 #endif //#ifndef AR_H
+
