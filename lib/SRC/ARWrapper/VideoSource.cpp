@@ -88,9 +88,12 @@ VideoSource::VideoSource() :
     frameStamp(0),
     m_error(ARW_ERROR_NONE)
 {
+    pthread_mutex_init(&frameBufferLock, NULL);
 }
 
 VideoSource::~VideoSource() {
+
+    pthread_mutex_destroy(&frameBufferLock);
 
 	if (videoConfiguration) {
 		free(videoConfiguration);
@@ -124,6 +127,16 @@ int VideoSource::getError()
         m_error = ARW_ERROR_NONE;
     }
     return temp;
+}
+
+void VideoSource::lockFrameBuffer()
+{
+    pthread_mutex_lock(&frameBufferLock);
+}
+
+void VideoSource::unlockFrameBuffer()
+{
+    pthread_mutex_unlock(&frameBufferLock);
 }
 
 void VideoSource::configure(const char* vconf, const char* cparaName, const char* cparaBuff, size_t cparaBuffLen) {
@@ -213,6 +226,7 @@ bool VideoSource::updateTexture(Color* buffer) {
     switch (pixelFormat) {
         case AR_PIXEL_FORMAT_BGRA:
         case AR_PIXEL_FORMAT_BGR:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 Color *outp = &buffer[videoWidth*y];
@@ -225,9 +239,11 @@ bool VideoSource::updateTexture(Color* buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_RGBA:
         case AR_PIXEL_FORMAT_RGB:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 Color *outp = &buffer[videoWidth*y];
@@ -240,8 +256,10 @@ bool VideoSource::updateTexture(Color* buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_ARGB:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 Color *outp = &buffer[videoWidth*y];
@@ -254,8 +272,10 @@ bool VideoSource::updateTexture(Color* buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_ABGR:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 Color *outp = &buffer[videoWidth*y];
@@ -268,8 +288,10 @@ bool VideoSource::updateTexture(Color* buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_MONO:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 Color *outp = &buffer[videoWidth*y];
@@ -280,6 +302,7 @@ bool VideoSource::updateTexture(Color* buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         default:
             return false;
@@ -744,6 +767,7 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
     switch (pixelFormat) {
         case AR_PIXEL_FORMAT_BGRA:
         case AR_PIXEL_FORMAT_BGR:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 uint32_t *outp = &buffer[videoWidth*y];
@@ -757,9 +781,11 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_RGBA:
         case AR_PIXEL_FORMAT_RGB:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 uint32_t *outp = &buffer[videoWidth*y];
@@ -773,8 +799,10 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_ARGB:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 uint32_t *outp = &buffer[videoWidth*y];
@@ -788,8 +816,10 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_ABGR:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 uint32_t *outp = &buffer[videoWidth*y];
@@ -803,8 +833,10 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_MONO:
+            lockFrameBuffer();
             for (int y = 0; y < videoHeight; y++) {
                 ARUint8 *inp = &(frameBuffer->buff[videoWidth*y*pixelSize]);
                 uint32_t *outp = &buffer[videoWidth*y];
@@ -818,9 +850,11 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
                     outp++;
                 }
             }
+            unlockFrameBuffer();
             break;
         case AR_PIXEL_FORMAT_420f:
         {
+            lockFrameBuffer();
 #if defined(HAVE_ARM_NEON) || defined(HAVE_ARM64_NEON)
             if (fastPath()) {
                 YCbCr422BiPlanarToRGBA_ARM_neon_asm((uint8_t *)buffer, frameBuffer->bufPlanes[0], frameBuffer->bufPlanes[1], videoWidth, videoHeight);
@@ -883,10 +917,12 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
 #if defined(HAVE_ARM_NEON) || defined(HAVE_ARM64_NEON)
             }
 #endif
+            unlockFrameBuffer();
         }
             break;
         case AR_PIXEL_FORMAT_NV21:
         {
+            lockFrameBuffer();
 #if defined(HAVE_ARM_NEON) || defined(HAVE_ARM64_NEON)
             if (fastPath()) {
                 YCrCb422BiPlanarToRGBA_ARM_neon_asm((uint8_t *)buffer, frameBuffer->bufPlanes[0], frameBuffer->bufPlanes[1], videoWidth, videoHeight);
@@ -950,6 +986,7 @@ bool VideoSource::updateTexture32(uint32_t *buffer) {
 #if defined(HAVE_ARM_NEON) || defined(HAVE_ARM64_NEON)
             }
 #endif
+            unlockFrameBuffer();
         }
             break;
         default:
@@ -974,7 +1011,7 @@ void VideoSource::updateTextureGL(int textureID) {
 	lastFrameStamp = frameStamp;
 
 	if (textureID && frameBuffer) { // Could also chcek glIsTexture(textureID), but it is slow.
-		
+		lockFrameBuffer();
 		//int val;
 		//glGetIntegerv(GL_TEXTURE_BINDING_2D, &val);
 		glBindTexture(GL_TEXTURE_2D, textureID);
@@ -988,7 +1025,8 @@ void VideoSource::updateTextureGL(int textureID) {
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, videoWidth, videoHeight, glPixFormat, glPixType, frameBuffer->buff);
 #endif
 		//glBindTexture(GL_TEXTURE_2D, val);
-
+		glFinish();
+        unlockFrameBuffer();
 	}
 }
 #endif // !_WINRT

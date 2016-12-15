@@ -53,6 +53,16 @@
   #endif
 #endif
 
+#if !defined(_WINRT)
+#  include <pthread.h>
+#else
+#  define pthread_mutex_t               CRITICAL_SECTION
+#  define pthread_mutex_init(pm, a)     InitializeCriticalSectionEx(pm, 4000, CRITICAL_SECTION_NO_DEBUG_INFO)
+#  define pthread_mutex_lock(pm)        EnterCriticalSection(pm)
+#  define pthread_mutex_unlock(pm)      LeaveCriticalSection(pm)
+#  define pthread_mutex_destroy(pm)     DeleteCriticalSection(pm)
+#endif
+
 /**
  * Base class for different video source implementations. A video source provides video frames to the 
  * ARToolKit tracking module. Video sources contain information about the video, such as size and pixel 
@@ -95,10 +105,13 @@ protected:
 
     AR2VideoBufferT *frameBuffer;       ///< Pointer to latest frame. Set by concrete subclass to point to frame data.
 	int frameStamp;						///< Latest framestamp. Incremented in the concrete subclass when a new frame arrives.
+    pthread_mutex_t frameBufferLock;
+    void lockFrameBuffer();
+    void unlockFrameBuffer();
     
     int m_error;
     void setError(int error);
-
+    
 	/**
 	 * The constructor is not public because instances are created using a factory method.
 	 * @see newVideoSource()
