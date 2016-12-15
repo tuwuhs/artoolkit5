@@ -89,10 +89,12 @@ VideoSource::VideoSource() :
     frameStamp(0),
     m_error(ARW_ERROR_NONE)
 {
-        
+    pthread_mutex_init(&frameBufferLock, NULL);
 }
 
 VideoSource::~VideoSource() {
+
+    pthread_mutex_destroy(&frameBufferLock);
 
 	if (videoConfiguration) {
 		free(videoConfiguration);
@@ -125,6 +127,16 @@ int VideoSource::getError()
         m_error = ARW_ERROR_NONE;
     }
     return temp;
+}
+
+void VideoSource::lockFrameBuffer()
+{
+    pthread_mutex_lock(&frameBufferLock);
+}
+
+void VideoSource::unlockFrameBuffer()
+{
+    pthread_mutex_unlock(&frameBufferLock);
 }
 
 void VideoSource::configure(const char* vconf, const char* cparaName, const char* cparaBuff, size_t cparaBuffLen) {
@@ -961,7 +973,7 @@ void VideoSource::updateTextureGL(int textureID) {
 	lastFrameStamp = frameStamp;
 
 	if (textureID && frameBuffer) { // Could also chcek glIsTexture(textureID), but it is slow.
-		
+		lockFrameBuffer();
 		//int val;
 		//glGetIntegerv(GL_TEXTURE_BINDING_2D, &val);
 		glBindTexture(GL_TEXTURE_2D, textureID);
@@ -975,7 +987,8 @@ void VideoSource::updateTextureGL(int textureID) {
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, videoWidth, videoHeight, glPixFormat, glPixType, frameBuffer);
 #endif
 		//glBindTexture(GL_TEXTURE_2D, val);
-
+		glFinish();
+        unlockFrameBuffer();
 	}
 }
 #endif // !_WINRT

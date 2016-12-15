@@ -53,8 +53,8 @@ class AndroidVideoSource : public VideoSource {
 
 private:
 
-	bool newFrameArrived;
-    ARUint8 *localFrameBuffer;
+    bool newFrameArrived;
+    ARUint8 *localFrameBuffer[2];
     size_t frameBufferSize;
 
     static void getVideoReadyAndroidCparamCallback(const ARParam *cparam_p, void *userdata);
@@ -68,25 +68,31 @@ protected:
 
 public:
 
-	AndroidVideoSource();
+    AndroidVideoSource();
 
-	bool getVideoReadyAndroid(const int width, const int height, const int cameraIndex, const bool cameraIsFrontFacing);
+    bool getVideoReadyAndroid(const int width, const int height, const int cameraIndex, const bool cameraIsFrontFacing);
 
-	virtual bool open();
+    virtual bool open();
 
     /**
      * Returns the size of current frame.
-     * @return		Size of the buffer containing the current video frame
+     * @return      Size of the buffer containing the current video frame
      */
     size_t getFrameSize();
+
+    /**
+     * Returns the current back frame (producer side ping-pong buffer).
+     * @return      Pointer to the buffer containing the current video frame
+     */
+    ARUint8* getBackFrame();
     
-	void acceptImage(ARUint8* ptr);
+    void acceptImage(ARUint8* ptr);
 
-	virtual bool captureFrame();
+    virtual bool captureFrame();
 
-	virtual bool close();
+    virtual bool close();
 
-	virtual const char* getName();
+    virtual const char* getName();
 
 };
 

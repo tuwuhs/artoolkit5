@@ -47,35 +47,36 @@
 
 AndroidVideoSource::AndroidVideoSource() : VideoSource(),
     newFrameArrived(false),
-    localFrameBuffer(NULL),
     frameBufferSize(0),
     gCameraIndex(0),
     gCameraIsFrontFacing(false) {
+    localFrameBuffer[0] = NULL;
+    localFrameBuffer[1] = NULL;
 }
 
 const char* AndroidVideoSource::getName() {
-	return "Android Video Source";
+    return "Android Video Source";
 }
 
 bool AndroidVideoSource::open() {
     
-	ARController::logv("Opening Android Video Source.");
+    ARController::logv("Opening Android Video Source.");
     
     if (deviceState != DEVICE_CLOSED) {
         ARController::logv("Error: device is already open.");
         return false;
     }
     
-	// On Android, ARVideo doesn't actually provide the frames, but it is needed to handle
+    // On Android, ARVideo doesn't actually provide the frames, but it is needed to handle
     // fetching of the camera parameters. Note that if the current working directory
     // isn't already the directory where the camera parametere cache should be created,
     // then the videoconfiguration should include the option 'cachedir="/path/to/cache"'.
     gVid = ar2VideoOpen(videoConfiguration);
     if (!gVid) {
-		ARController::logv("arVideoOpen unable to open connection to camera.");
-    	return false;
-	}
-	//ARController::logv("Opened connection to camera.");
+        ARController::logv("arVideoOpen unable to open connection to camera.");
+        return false;
+    }
+    //ARController::logv("Opened connection to camera.");
 
     pixelFormat = ar2VideoGetPixelFormat(gVid);
     if (pixelFormat == AR_PIXEL_FORMAT_INVALID) {
@@ -83,8 +84,8 @@ bool AndroidVideoSource::open() {
         goto bail;
     }
     
-	deviceState = DEVICE_OPEN;
-	return true;
+    deviceState = DEVICE_OPEN;
+    return true;
     
 bail:
     ar2VideoClose(gVid);
@@ -93,7 +94,7 @@ bail:
 }
 
 bool AndroidVideoSource::getVideoReadyAndroid(const int width, const int height, const int cameraIndex, const bool cameraIsFrontFacing) {
-	
+    
     char *a, b[1024];
     int err_i;
     
@@ -108,8 +109,8 @@ bool AndroidVideoSource::getVideoReadyAndroid(const int width, const int height,
     ARController::logv("AndroidVideoSource::getVideoReadyAndroid: width=%d, height=%d, cameraIndex=%d, cameraIsFrontFacing=%s.\n", width, height, cameraIndex, (cameraIsFrontFacing ? "true" : "false"));
 #endif
     
-	videoWidth = width;
-	videoHeight = height;
+    videoWidth = width;
+    videoHeight = height;
     gCameraIndex = cameraIndex;
     gCameraIsFrontFacing = cameraIsFrontFacing;
 
@@ -127,17 +128,17 @@ bool AndroidVideoSource::getVideoReadyAndroid(const int width, const int height,
     }
     
     ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_WIDTH, videoWidth);
-	ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_HEIGHT, videoHeight);
-	ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_CAMERA_INDEX, gCameraIndex);
-	ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_CAMERA_FACE, gCameraIsFrontFacing);
-	//ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_INTERNET_STATE, gInternetState);
+    ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_HEIGHT, videoHeight);
+    ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_CAMERA_INDEX, gCameraIndex);
+    ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_CAMERA_FACE, gCameraIsFrontFacing);
+    //ar2VideoSetParami(gVid, AR_VIDEO_PARAM_ANDROID_INTERNET_STATE, gInternetState);
 
-	if (ar2VideoGetCParamAsync(gVid, getVideoReadyAndroidCparamCallback, (void *)this) < 0) {
-		ARController::logv("Error getting cparam.\n");
-		getVideoReadyAndroid2(NULL);
-	}
+    if (ar2VideoGetCParamAsync(gVid, getVideoReadyAndroidCparamCallback, (void *)this) < 0) {
+        ARController::logv("Error getting cparam.\n");
+        getVideoReadyAndroid2(NULL);
+    }
     
-	return (true);
+    return (true);
 }
 
 // static callback method.
@@ -150,11 +151,11 @@ void AndroidVideoSource::getVideoReadyAndroidCparamCallback(const ARParam *cpara
 
 bool AndroidVideoSource::getVideoReadyAndroid2(const ARParam *cparam_p) {
     
-	// Load camera parameters
+    // Load camera parameters
     ARParam cparam;
-	if (cparam_p) cparam = *cparam_p;
-	else {
-	    ARController::logv("Unable to automatically determine camera parameters. Using supplied default.\n");
+    if (cparam_p) cparam = *cparam_p;
+    else {
+        ARController::logv("Unable to automatically determine camera parameters. Using supplied default.\n");
         if (cameraParam) {
             if (arParamLoad(cameraParam, 1, &cparam) < 0) {
                 ARController::logv("Error: Unable to load camera parameters from file '%s'.", cameraParam);
@@ -169,41 +170,42 @@ bool AndroidVideoSource::getVideoReadyAndroid2(const ARParam *cparam_p) {
             ARController::logv("Error: video source must be configured before opening.");
             goto bail;
         }
-	}
+    }
 
-	if (cparam.xsize != videoWidth || cparam.ysize != videoHeight) {
+    if (cparam.xsize != videoWidth || cparam.ysize != videoHeight) {
 #ifdef DEBUG
         ARController::logv("*** Camera Parameter resized from %d, %d. ***", cparam.xsize, cparam.ysize);
 #endif
         arParamChangeSize(&cparam, videoWidth, videoHeight, &cparam);
     }
-	if (!(cparamLT = arParamLTCreate(&cparam, AR_PARAM_LT_DEFAULT_OFFSET))) {
-    	ARController::logv("Error: Failed to create camera parameters lookup table.");
+    if (!(cparamLT = arParamLTCreate(&cparam, AR_PARAM_LT_DEFAULT_OFFSET))) {
+        ARController::logv("Error: Failed to create camera parameters lookup table.");
         goto bail;
-	}
+    }
 
-	// Allocate local buffer for video frame after copy or conversion.
+    // Allocate local buffer for video frame after copy or conversion.
     if (pixelFormat == AR_PIXEL_FORMAT_NV21 || pixelFormat == AR_PIXEL_FORMAT_420f) {
         frameBufferSize = videoWidth * videoHeight + 2 * videoWidth/2 * videoHeight/2;
     } else {
         frameBufferSize = videoWidth * videoHeight * arUtilGetPixelSize(pixelFormat);
     }
-    localFrameBuffer = (ARUint8*)calloc(frameBufferSize, sizeof(ARUint8));
-	if (!localFrameBuffer) {
+    localFrameBuffer[0] = (ARUint8*)calloc(frameBufferSize, sizeof(ARUint8));
+    localFrameBuffer[1] = (ARUint8*)calloc(frameBufferSize, sizeof(ARUint8));
+    if (!localFrameBuffer[0] || !localFrameBuffer[1]) {
         ARController::logv("Error: Unable to allocate memory for local video frame buffer");
         goto bail;
-	}
-    frameBuffer = localFrameBuffer;
+    }
+    frameBuffer = localFrameBuffer[0];
     if (pixelFormat == AR_PIXEL_FORMAT_NV21 || pixelFormat == AR_PIXEL_FORMAT_420f) {
-        frameBuffer2 = localFrameBuffer + videoWidth*videoHeight;
+        frameBuffer2 = localFrameBuffer[0] + videoWidth*videoHeight;
     } else {
         frameBuffer2 = NULL;
     }
     
 
-	ARController::logv("Android Video Source running %dx%d.", videoWidth, videoHeight);
+    ARController::logv("Android Video Source running %dx%d.", videoWidth, videoHeight);
 
-	deviceState = DEVICE_RUNNING;
+    deviceState = DEVICE_RUNNING;
     return true;
     
 bail:
@@ -219,7 +221,6 @@ bool AndroidVideoSource::captureFrame() {
 
     //ARController::logv("AndroidVideoSource::captureFrame()");
     if (deviceState == DEVICE_RUNNING) {
-        
         if (newFrameArrived) {
             newFrameArrived = false;
             return true;
@@ -229,20 +230,27 @@ bool AndroidVideoSource::captureFrame() {
     return false;
 }
 
+ARUint8* AndroidVideoSource::getBackFrame() {
+    return (frameBuffer == localFrameBuffer[0])? localFrameBuffer[1]: localFrameBuffer[0];
+}
+
 void AndroidVideoSource::acceptImage(ARUint8* ptr) {
-	
+    
     //ARController::logv("AndroidVideoSource::acceptImage()");
-	if (deviceState == DEVICE_RUNNING) {
+    if (deviceState == DEVICE_RUNNING) {
+        ARUint8 *buff = getBackFrame();
         if (pixelFormat == AR_PIXEL_FORMAT_NV21 || pixelFormat == AR_PIXEL_FORMAT_420f) {
             // Nothing more to do.
         } else if (ptr && pixelFormat == AR_PIXEL_FORMAT_RGBA) {
-            color_convert_common((unsigned char*)ptr, (unsigned char*)(ptr + videoWidth * videoHeight), videoWidth, videoHeight, localFrameBuffer);
-            
+            color_convert_common((unsigned char*)ptr, (unsigned char*)(ptr + videoWidth * videoHeight), videoWidth, videoHeight, buff);
         } else {
             return;
         }
-		frameStamp++;
-		newFrameArrived = true;
+        lockFrameBuffer();
+        frameBuffer = buff;
+        unlockFrameBuffer();
+        frameStamp++;
+        newFrameArrived = true;
     }
 }
 
@@ -252,19 +260,23 @@ bool AndroidVideoSource::close() {
     
     if (cparamLT) arParamLTFree(&cparamLT);
 
-	if (localFrameBuffer) {
-		free(localFrameBuffer);
-		localFrameBuffer = NULL;
-        frameBuffer = NULL;
-        frameBuffer2 = NULL;
-        frameBufferSize = 0;
-	}
+    if (localFrameBuffer[0]) {
+        free(localFrameBuffer[0]);
+        localFrameBuffer[0] = NULL;
+    }
+    if (localFrameBuffer[1]) {
+        free(localFrameBuffer[1]);
+        localFrameBuffer[1] = NULL;
+    }
+    frameBuffer = NULL;
+    frameBuffer2 = NULL;
+    frameBufferSize = 0;
     newFrameArrived = false;
     ar2VideoClose(gVid);
     gVid = NULL;
 
-	deviceState = DEVICE_CLOSED;
-	ARController::logv("Android Video Source closed.");
+    deviceState = DEVICE_CLOSED;
+    ARController::logv("Android Video Source closed.");
     
     return true;
 }

@@ -360,7 +360,7 @@ bool ARController::videoAcceptImage(JNIEnv* env, jobject obj, const int videoSou
         }
         
         if (avs->getPixelFormat() == AR_PIXEL_FORMAT_NV21) {
-            env->GetByteArrayRegion(pinArray, 0, avs->getFrameSize(), (jbyte *)avs->getFrame());
+            env->GetByteArrayRegion(pinArray, 0, avs->getFrameSize(), (jbyte *)avs->getBackFrame());
             avs->acceptImage(NULL);
         } else {
             if (jbyte* buff = env->GetByteArrayElements(pinArray, NULL)) {
