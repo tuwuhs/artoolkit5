@@ -56,9 +56,9 @@ private:
 	bool newFrameArrived;
     AR2VideoBufferT *localFrameBuffer;
     size_t incomingFrameRawBufferSize;
-    unsigned char *incomingFrameRawBuffer;
+    unsigned char *incomingFrameRawBuffer[2];
     size_t convertedFrameRawBufferSize;
-    ARUint8 *convertedFrameRawBuffer;
+    ARUint8 *convertedFrameRawBuffer[2];
     
     static void getVideoReadyAndroidCparamCallback(const ARParam *cparam_p, void *userdata);
     bool getVideoReadyAndroid2(const ARParam *cparam_p);
